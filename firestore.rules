@@ -1,0 +1,32 @@
+rules_version = '2';
+// Paste into Firebase console > Firestore Database > Rules.
+// Replace YOUR-INVITE-CODE with your group's code. Keep the real code out of this public repo.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isMember() {
+      return signedIn() && exists(/databases/$(database)/documents/members/$(request.auth.uid));
+    }
+    match /members/{uid} {
+      allow read: if isMember();
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.code == 'YOUR-INVITE-CODE'
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 20;
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.code == resource.data.code
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 20;
+      allow delete: if false;
+    }
+    match /rooms/{roomId} {
+      allow read, write: if isMember();
+    }
+    match /games/{gameId} {
+      allow read, create: if isMember();
+      allow update, delete: if false;
+    }
+  }
+}
